@@ -24,9 +24,10 @@ router.post('/register', async (req, res) => {
         return res.status(400).json({ message: 'Missing data.' })
     }
 
-    const existingUser = User.findOne({
+    const existingUser = await User.findOne({
         $or: [{ username: username }, { email: email }],
     })
+
     if (existingUser) {
         return res
             .status(400)
@@ -36,18 +37,22 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, saltRounds)
     const user = new User({ username, email, password: hashedPassword })
     await user.save()
-    res.status(201).json(user)
+    res.status(201).json({
+        id: user._id,
+        username: user.username,
+        email: user.email,
+    })
 })
 
 router.post('/login', async (req, res) => {
     const { email, password } = req.body
 
-    const user = User.findOne({ email: email })
+    const user = await User.findOne({ email: email })
     if (!user) {
         return res.status(401).json({ message: 'User does not exist.' })
     }
 
-    const result = await bcrypt.compare(password, hash)
+    const result = await bcrypt.compare(password, user.password)
     if (!result) {
         return res.status(401).json({ message: 'Unauthorized.' })
     }
